@@ -503,8 +503,14 @@ namespace xsimd {
     template<class A> batch<float, A> fast_cast(batch<int32_t, A> const& self, batch<float, A> const&, requires_arch<avx512f>) {
       return _mm512_cvtepi32_ps(self);
     }
+    template<class A> batch<float, A> fast_cast(batch<uint32_t, A> const& self, batch<float, A> const&, requires_arch<avx512f>) {
+      return _mm512_cvtepu32_ps(self);
+    }
     template<class A> batch<int32_t, A> fast_cast(batch<float, A> const& self, batch<int32_t, A> const&, requires_arch<avx512f>) {
       return _mm512_cvttps_epi32(self);
+    }
+    template<class A> batch<uint32_t, A> fast_cast(batch<float, A> const& self, batch<uint32_t, A> const&, requires_arch<avx512f>) {
+      return _mm512_cvttps_epu32(self);
     }
     }
 
