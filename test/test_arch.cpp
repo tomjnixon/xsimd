@@ -56,8 +56,10 @@ TEST(arch, available)
 struct sum
 {
     template <class Arch, class T>
-    T operator()(Arch, T const* data, unsigned size)
+    T operator()(Arch, T const* data, unsigned size, unsigned expected_arch = 0)
     {
+        if (expected_arch)
+            EXPECT_EQ(expected_arch, Arch::version());
         using batch = xsimd::batch<T, Arch>;
         batch acc(static_cast<T>(0));
         const unsigned n = size / batch::size * batch::size;
@@ -85,8 +87,20 @@ TEST(arch, dispatcher)
 #if XSIMD_WITH_AVX && XSIMD_WITH_SSE2
     static_assert(xsimd::supported_architectures::contains<xsimd::avx>() && xsimd::supported_architectures::contains<xsimd::sse2>(), "consistent supported architectures");
     {
+        auto dispatched = xsimd::dispatch<sum, xsimd::arch_list<xsimd::avx2, xsimd::avx, xsimd::sse2>>(sum {});
+        float res = dispatched(data, 17, xsimd::avx2::version());
+        EXPECT_EQ(ref, res);
+    }
+
+    {
         auto dispatched = xsimd::dispatch<sum, xsimd::arch_list<xsimd::avx, xsimd::sse2>>(sum {});
-        float res = dispatched(data, 17);
+        float res = dispatched(data, 17, xsimd::sse2::version());
+        EXPECT_EQ(ref, res);
+    }
+
+    {
+        auto dispatched = xsimd::dispatch<sum, xsimd::arch_list<xsimd::sse2>>(sum {});
+        float res = dispatched(data, 17, xsimd::sse2::version());
         EXPECT_EQ(ref, res);
     }
 #endif
