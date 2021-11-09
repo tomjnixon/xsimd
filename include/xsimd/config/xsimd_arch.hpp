@@ -61,6 +61,22 @@ namespace xsimd
         {
         };
 
+        template <typename T, T... values>
+        struct max_of_t;
+
+        template <typename T, T head, T... tail>
+        struct max_of_t<T, head, tail...>
+        {
+            static constexpr T max_tail = max_of_t<T, tail...>::value;
+            static constexpr T value = head > max_tail ? head : max_tail;
+        };
+
+        template <typename T, T head>
+        struct max_of_t<T, head>
+        {
+            static constexpr T value = head;
+        };
+
     } // namespace detail
 
     // An arch_list is a list of architectures, sorted by version number.
@@ -88,6 +104,12 @@ namespace xsimd
         static void for_each(F&& f)
         {
             (void)std::initializer_list<bool> { (f(Archs {}), true)... };
+        }
+
+        static constexpr std::size_t alignment()
+        {
+            // all alignments are a power of two
+            return detail::max_of_t<size_t, Archs::alignment()..., 0>::value;
         }
     };
 
