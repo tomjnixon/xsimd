@@ -97,7 +97,7 @@ public:
         }
 #endif
 
-        return prefix + "unknow_type";
+        return prefix + "unknown_type";
     }
 };
 
