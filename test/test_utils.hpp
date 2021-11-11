@@ -36,28 +36,8 @@ public:
     static std::string GetName(int)
     {
         using value_type = typename T::value_type;
-        std::string prefix = "fallback_";
-#if XSIMD_WITH_SSE
-        size_t register_size = T::size * sizeof(value_type) * CHAR_BIT;
-        if (register_size == size_t(128))
-        {
-            prefix = "sse_";
-        }
-        else if (register_size == size_t(256))
-        {
-            prefix = "avx_";
-        }
-        else if (register_size == size_t(512))
-        {
-            prefix = "avx512_";
-        }
-#elif XSIMD_WITH_NEON
-        size_t register_size = T::size * sizeof(value_type) * CHAR_BIT;
-        if (register_size == size_t(128))
-        {
-            prefix = "arm_";
-        }
-#endif
+        std::string prefix = std::string { T::arch_type::name() } + "_";
+
         if (std::is_same<value_type, uint8_t>::value)
         {
             return prefix + "uint8_t";
