@@ -38,7 +38,7 @@ code, as detailed in the :ref:`Arch Dispatching` section.
 
 As a side effect of this (almost full) rewrite of the library code, `xsimd` is
 now twice as fast to compile, and its source code size as been (roughly) divided
-by two. The `xsimd` developers also took this as an opportnuity to significantly
+by two. The `xsimd` developers also took this as an opportunity to significantly
 improve test coverage.
 
 Most Notable Changes
