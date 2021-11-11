@@ -102,6 +102,24 @@ namespace xsimd
             return detail::load_unaligned<A>(mem, cvt, generic {}, detail::conversion_type<A, T_in, T_out> {});
         }
 
+        // gather
+        template <std::size_t scale, class A, class T, class Offset>
+        inline batch<T, A> gather(T const* mem, batch<Offset, A> const& offset, requires_arch<generic>)
+        {
+            using batch_type_out = batch<T, A>;
+            // using batch_type_offset = batch<Offset, A>;
+            static_assert(batch_type_out::size == offset.size, "offset must be same size as result");
+
+            alignas(A::alignment()) Offset offset_buf[batch_type_out::size];
+            offset.store_aligned(offset_buf);
+
+            alignas(A::alignment()) T buffer[batch_type_out::size];
+            for (std::size_t i = 0; i < batch_type_out::size; i++)
+                buffer[i] = *(T const*)(((uint8_t const*)mem) + scale * offset_buf[i]);
+
+            return batch_type_out::load_aligned(buffer);
+        }
+
         // store
         template <class T, class A>
         inline void store(batch_bool<T, A> const& self, bool* mem, requires_arch<generic>)

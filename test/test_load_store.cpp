@@ -178,3 +178,86 @@ TYPED_TEST(load_store_test, store)
 {
     this->test_store();
 }
+
+template <class B>
+class gather_test : public testing::Test
+{
+protected:
+    using arch = typename B::arch_type;
+    using batch_type = B;
+    using value_type = typename B::value_type;
+    template <class T>
+    using allocator = xsimd::default_allocator<T, arch>;
+    static constexpr size_t size = B::size;
+    using array_type = std::array<value_type, size>;
+    using vector_type = std::vector<value_type, allocator<value_type>>;
+
+    using offset_type = xsimd::as_integer_t<value_type>;
+    using offset_batch_type = xsimd::batch<offset_type, arch>;
+    using offset_array_type = std::array<offset_type, offset_batch_type::size>;
+
+public:
+    void test_gather()
+    {
+        vector_type vec(100);
+        value_type min = value_type(0);
+        value_type max = value_type(50);
+
+        std::default_random_engine generator;
+        std::uniform_int_distribution<int> distribution(min, max);
+
+        auto gen = [&distribution, &generator]()
+        {
+            return static_cast<value_type>(distribution(generator));
+        };
+
+        std::generate(vec.begin(), vec.end(), gen);
+
+        alignas(arch::alignment()) offset_array_type offset_array;
+        std::generate(offset_array.begin(), offset_array.end(), gen);
+        auto offset = offset_batch_type::load_aligned(offset_array.data());
+
+        { // unscaled
+            batch_type res = xsimd::gather(vec.data(), offset);
+
+            for (size_t i = 0; i < batch_type::size; i++)
+            {
+                EXPECT_EQ(vec[offset.get(i)], res.get(i));
+            }
+        }
+
+        { // unscaled explicit
+            batch_type res = xsimd::gather<sizeof(value_type)>(vec.data(), offset);
+
+            for (size_t i = 0; i < batch_type::size; i++)
+            {
+                EXPECT_EQ(vec[offset.get(i)], res.get(i));
+            }
+        }
+
+        { // scale = 1
+            batch_type res = xsimd::gather<1>(vec.data(), offset * sizeof(value_type));
+
+            for (size_t i = 0; i < batch_type::size; i++)
+            {
+                EXPECT_EQ(vec[offset.get(i)], res.get(i));
+            }
+        }
+
+        { // scale = double
+            batch_type res = xsimd::gather<2 * sizeof(value_type)>(vec.data(), offset);
+
+            for (size_t i = 0; i < batch_type::size; i++)
+            {
+                EXPECT_EQ(vec[2 * offset.get(i)], res.get(i));
+            }
+        }
+    }
+};
+
+TYPED_TEST_SUITE(gather_test, batch_types, simd_test_names);
+
+TYPED_TEST(gather_test, gather)
+{
+    this->test_gather();
+}

@@ -1102,6 +1102,18 @@ namespace xsimd
         return load_as<From, A>(ptr, unaligned_mode {});
     }
 
+    template <std::size_t scale, class A = default_arch, class From, class Offset>
+    inline batch<From, A> gather(From const* ptr, batch<Offset, A> const& offset)
+    {
+        return kernel::gather<scale, A>(ptr, offset, A {});
+    }
+
+    template <class A = default_arch, class From, class Offset>
+    inline batch<From, A> gather(From const* ptr, batch<Offset, A> const& offset)
+    {
+        return gather<sizeof(From), A>(ptr, offset);
+    }
+
     /**
      * @ingroup batch_math
      *
