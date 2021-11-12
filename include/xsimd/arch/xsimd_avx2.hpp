@@ -546,6 +546,77 @@ namespace xsimd
                 return sub(self, other, avx {});
             }
         }
+
+        namespace detail
+        {
+            template <std::size_t required_scale, std::size_t... scales>
+            struct select_scale;
+
+            template <std::size_t required_scale, std::size_t head>
+            struct select_scale<required_scale, head>
+            {
+                static constexpr size_t scale = head;
+            };
+
+            template <std::size_t required_scale, std::size_t head, std::size_t... tail>
+            struct select_scale<required_scale, head, tail...>
+            {
+                static constexpr size_t scale = (required_scale % head == 0)
+                    ? head
+                    : select_scale<required_scale, tail...>::scale;
+            };
+
+            template <std::size_t required_scale, std::size_t... scales>
+            struct prescaler
+            {
+                static constexpr std::size_t scale = select_scale<required_scale, scales...>::scale;
+                static constexpr std::size_t prescale = required_scale / scale;
+                static_assert(required_scale % scale == 0, "found unsuitable scale");
+
+                template <typename T>
+                static inline T run(T const& offset)
+                {
+                    if (prescale == 1)
+                        return offset;
+                    else
+                        return prescale * offset;
+                }
+            };
+        };
+
+        template <std::size_t scale, class A>
+        inline batch<float, A> gather(float const* mem, batch<int32_t, A> const& offset, requires_arch<avx2>)
+        {
+            using prescale = detail::prescaler<scale, 8, 4, 2, 1>;
+            return _mm256_i32gather_ps(mem, prescale::run(offset), prescale::scale);
+        }
+
+        template <std::size_t scale, class A>
+        inline batch<double, A> gather(double const* mem, batch<int64_t, A> const& offset, requires_arch<avx2>)
+        {
+            using prescale = detail::prescaler<scale, 8, 4, 2, 1>;
+            return _mm256_i64gather_pd(mem, prescale::run(offset), prescale::scale);
+        }
+
+        template <std::size_t scale, class A, class T,
+                  class = typename std::enable_if<std::is_same<T, int32_t>::value
+                                                      || std::is_same<T, uint32_t>::value,
+                                                  void>::type>
+        inline batch<T, A> gather(T const* mem, batch<int32_t, A> const& offset, requires_arch<avx2>)
+        {
+            using prescale = detail::prescaler<scale, 8, 4, 2, 1>;
+            return _mm256_i32gather_epi32((int32_t const*)mem, prescale::run(offset), prescale::scale);
+        }
+
+        template <std::size_t scale, class A, class T,
+                  class = typename std::enable_if<std::is_same<T, int64_t>::value
+                                                      || std::is_same<T, uint64_t>::value,
+                                                  void>::type>
+        inline batch<T, A> gather(T const* mem, batch<int64_t, A> const& offset, requires_arch<avx2>)
+        {
+            using prescale = detail::prescaler<scale, 8, 4, 2, 1>;
+            return _mm256_i64gather_epi64((long long int const*)mem, prescale::run(offset), prescale::scale);
+        }
     }
 
 }
