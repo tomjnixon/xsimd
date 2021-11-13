@@ -105,36 +105,29 @@ namespace xsimd
         // gather
         template <std::size_t scale, class A, class T, class Offset,
                   typename std::enable_if<scale != sizeof(T), bool>::type = true>
-        inline batch<T, A> gather(T const* mem, batch<Offset, A> const& offset, requires_arch<generic>)
+        inline batch<T, A> gather(T const* mem, Offset const& offset, requires_arch<generic>)
         {
             using batch_type_out = batch<T, A>;
-            using batch_type_offset = batch<Offset, A>;
-            static_assert(batch_type_out::size == batch_type_offset::size, "offset must be same size as result");
-
-            alignas(A::alignment()) Offset offset_buf[batch_type_out::size];
-            offset.store_aligned(offset_buf);
+            using offset_value = typename Offset::value_type;
+            static_assert(batch_type_out::size == Offset::size, "offset must be same size as result");
 
             alignas(A::alignment()) T buffer[batch_type_out::size];
             for (std::size_t i = 0; i < batch_type_out::size; i++)
-                buffer[i] = *(T const*)(((uint8_t const*)mem) + ((Offset)scale) * offset_buf[i]);
+                buffer[i] = *(T const*)(((uint8_t const*)mem) + ((offset_value)scale) * offset.get(i));
 
             return batch_type_out::load_aligned(buffer);
         }
 
         template <std::size_t scale, class A, class T, class Offset,
                   typename std::enable_if<scale == sizeof(T), bool>::type = true>
-        inline batch<T, A> gather(T const* mem, batch<Offset, A> const& offset, requires_arch<generic>)
+        inline batch<T, A> gather(T const* mem, Offset const& offset, requires_arch<generic>)
         {
             using batch_type_out = batch<T, A>;
-            using batch_type_offset = batch<Offset, A>;
-            static_assert(batch_type_out::size == batch_type_offset::size, "offset must be same size as result");
-
-            alignas(A::alignment()) Offset offset_buf[batch_type_out::size];
-            offset.store_aligned(offset_buf);
+            static_assert(batch_type_out::size == Offset::size, "offset must be same size as result");
 
             alignas(A::alignment()) T buffer[batch_type_out::size];
             for (std::size_t i = 0; i < batch_type_out::size; i++)
-                buffer[i] = mem[offset_buf[i]];
+                buffer[i] = mem[offset.get(i)];
 
             return batch_type_out::load_aligned(buffer);
         }

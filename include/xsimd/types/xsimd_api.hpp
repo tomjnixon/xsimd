@@ -1103,13 +1103,14 @@ namespace xsimd
     }
 
     template <std::size_t scale, class A = default_arch, class From, class Offset>
-    inline batch<From, A> gather(From const* ptr, batch<Offset, A> const& offset)
+    inline batch<From, A> gather(From const* ptr, Offset const& offset)
     {
+        static_assert(batch<From, A>::size == Offset::size, "offset and result must be the same size");
         return kernel::gather<scale, A>(ptr, offset, A {});
     }
 
     template <class A = default_arch, class From, class Offset>
-    inline batch<From, A> gather(From const* ptr, batch<Offset, A> const& offset)
+    inline batch<From, A> gather(From const* ptr, Offset const& offset)
     {
         return gather<sizeof(From), A>(ptr, offset);
     }
