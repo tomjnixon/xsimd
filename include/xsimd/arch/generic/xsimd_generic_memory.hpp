@@ -115,7 +115,7 @@ namespace xsimd
 
             alignas(A::alignment()) T buffer[batch_type_out::size];
             for (std::size_t i = 0; i < batch_type_out::size; i++)
-                buffer[i] = *(T const*)(((uint8_t const*)mem) + scale * offset_buf[i]);
+                buffer[i] = *(T const*)(((uint8_t const*)mem) + ((Offset)scale) * offset_buf[i]);
 
             return batch_type_out::load_aligned(buffer);
         }
