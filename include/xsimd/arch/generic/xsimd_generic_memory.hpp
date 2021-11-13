@@ -108,7 +108,7 @@ namespace xsimd
         inline batch<T, A> gather(T const* mem, Offset const& offset, requires_arch<generic>)
         {
             using batch_type_out = batch<T, A>;
-            using offset_value = typename Offset::value_type;
+            using offset_value = decltype(offset.get(0));
             static_assert(batch_type_out::size == Offset::size, "offset must be same size as result");
 
             alignas(A::alignment()) T buffer[batch_type_out::size];
