@@ -600,6 +600,30 @@ namespace xsimd
             {
                 return _mm256_i32gather_ps(mem, offset, scale);
             }
+
+            template <std::size_t scale = 1, class A>
+            inline batch<double, A> gather_impl(double const* mem, batch<int64_t, A> offset, requires_arch<avx2>)
+            {
+                return _mm256_i64gather_pd(mem, offset, scale);
+            }
+
+            template <std::size_t scale = 1, class A, class T,
+                      typename std::enable_if<std::is_same<T, int32_t>::value || std::is_same<T, uint32_t>::value,
+                                              int>::type
+                      = 0>
+            inline batch<T, A> gather_impl(T const* mem, batch<int32_t, A> offset, requires_arch<avx2>)
+            {
+                return _mm256_i32gather_epi32((int const*)mem, offset, scale);
+            }
+
+            template <std::size_t scale = 1, class A, class T,
+                      typename std::enable_if<std::is_same<T, int64_t>::value || std::is_same<T, uint64_t>::value,
+                                              int>::type
+                      = 0>
+            inline batch<T, A> gather_impl(T const* mem, batch<int64_t, A> offset, requires_arch<avx2>)
+            {
+                return _mm256_i64gather_epi64((long long int const*)mem, offset, scale);
+            }
         };
 
         template <std::size_t scale, class A, class T, class O,
@@ -610,43 +634,6 @@ namespace xsimd
             offset_batch_t offset_batch = offset;
             using prescale = detail::prescaler<scale, 8, 4, 2, 1>;
             return detail::gather_impl<prescale::scale>(mem, prescale::run(offset_batch), A {});
-        }
-
-        template <std::size_t scale, class A, class Offset,
-                  typename std::enable_if<std::is_same<typename Offset::value_type, int64_t>::value,
-                                          int>::type
-                  = 0>
-        inline batch<double, A> gather(double const* mem, Offset const& offset, requires_arch<avx2>)
-        {
-            batch<int64_t, A> offset_batch = offset;
-            using prescale = detail::prescaler<scale, 8, 4, 2, 1>;
-            return _mm256_i64gather_pd(mem, prescale::run(offset_batch), prescale::scale);
-        }
-
-        template <std::size_t scale, class A, class T, class Offset,
-                  typename std::enable_if<(std::is_same<T, int32_t>::value
-                                           || std::is_same<T, uint32_t>::value)
-                                              && std::is_same<typename Offset::value_type, int32_t>::value,
-                                          int>::type
-                  = 0>
-        inline batch<T, A> gather(T const* mem, Offset const& offset, requires_arch<avx2>)
-        {
-            batch<int32_t, A> offset_batch = offset;
-            using prescale = detail::prescaler<scale, 8, 4, 2, 1>;
-            return _mm256_i32gather_epi32((int32_t const*)mem, prescale::run(offset_batch), prescale::scale);
-        }
-
-        template <std::size_t scale, class A, class T, class Offset,
-                  typename std::enable_if<(std::is_same<T, int64_t>::value
-                                           || std::is_same<T, uint64_t>::value)
-                                              && std::is_same<typename Offset::value_type, int64_t>::value,
-                                          int>::type
-                  = 0>
-        inline batch<T, A> gather(T const* mem, Offset const& offset, requires_arch<avx2>)
-        {
-            batch<int64_t, A> offset_batch = offset;
-            using prescale = detail::prescaler<scale, 8, 4, 2, 1>;
-            return _mm256_i64gather_epi64((long long int const*)mem, prescale::run(offset_batch), prescale::scale);
         }
     }
 
