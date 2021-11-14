@@ -33,10 +33,11 @@ namespace xsimd
         }
     }
 
-    template <class batch_type, bool... Values>
+    template <class batch_type_, bool... Values>
     struct batch_bool_constant
     {
         static constexpr std::size_t size = sizeof...(Values);
+        using batch_type = batch_type_;
         using arch_type = typename batch_type::arch_type;
         using value_type = bool;
         static_assert(sizeof...(Values) == batch_type::size, "consistent batch size");
@@ -62,10 +63,11 @@ namespace xsimd
         }
     };
 
-    template <class batch_type, typename batch_type::value_type... Values>
+    template <class batch_type_, typename batch_type_::value_type... Values>
     struct batch_constant
     {
         static constexpr std::size_t size = sizeof...(Values);
+        using batch_type = batch_type_;
         using arch_type = typename batch_type::arch_type;
         using value_type = typename batch_type::value_type;
         static_assert(sizeof...(Values) == batch_type::size, "consistent batch size");
