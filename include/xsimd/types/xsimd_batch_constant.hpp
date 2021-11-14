@@ -39,10 +39,11 @@ namespace xsimd
         static constexpr std::size_t size = sizeof...(Values);
         using batch_type = batch_type_;
         using arch_type = typename batch_type::arch_type;
+        using batch_bool_type = batch_bool<typename batch_type::value_type, arch_type>;
         using value_type = bool;
         static_assert(sizeof...(Values) == batch_type::size, "consistent batch size");
 
-        operator batch_bool<typename batch_type::value_type, arch_type>() const { return { Values... }; }
+        inline operator batch_bool_type() const { return batch_bool_type { Values... }; }
 
         static constexpr bool get(size_t i)
         {
