@@ -113,6 +113,25 @@ namespace xsimd
             detail::make_index_sequence<batch_type::size>());
     }
 
+    namespace detail
+    {
+        struct all_true_generator
+        {
+            static constexpr bool get(size_t /*index*/, size_t /*size*/)
+            {
+                return true;
+            }
+        };
+    }
+
+    // make a batch_bool_constant which has all lanes set to true
+    template <class batch_type>
+    inline constexpr auto make_batch_bool_constant_true()
+        -> decltype(make_batch_bool_constant<batch_type, detail::all_true_generator>())
+    {
+        return make_batch_bool_constant<batch_type, detail::all_true_generator>();
+    }
+
 } // namespace xsimd
 
 #endif
