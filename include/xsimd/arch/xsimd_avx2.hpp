@@ -583,29 +583,21 @@ namespace xsimd
                 }
             };
 
-            template <typename T, typename O, typename A>
-            struct gather_impl;
-
-            template <typename A>
-            struct gather_impl<float, int32_t, A>
+            template <std::size_t scale = 1, class A>
+            inline batch<float, A> gather_impl(float const* mem, batch<int32_t, A> offset, requires_arch<avx2>)
             {
-                using enable = void;
-                template <std::size_t scale>
-                static inline batch<float, A> run(float const* mem, batch<int32_t, A> offset)
-                {
-                    return _mm256_i32gather_ps(mem, offset, scale);
-                }
-            };
+                return _mm256_i32gather_ps(mem, offset, scale);
+            }
         };
 
         template <std::size_t scale, class A, class T, class O,
-                  class Impl = detail::gather_impl<T, typename O::value_type, A>,
-                  class enable = typename Impl::enable>
-        inline batch<T, A> gather(T const* mem, O const& offset, requires_arch<avx2>)
+                  class offset_batch_t = batch<typename O::value_type, A>>
+        inline auto gather(T const* mem, O const& offset, requires_arch<avx2>)
+            -> decltype(detail::gather_impl(mem, std::declval<offset_batch_t>(), A {}))
         {
-            batch<typename O::value_type> offset_batch = offset;
+            offset_batch_t offset_batch = offset;
             using prescale = detail::prescaler<scale, 8, 4, 2, 1>;
-            return Impl::template run<prescale::scale>(mem, prescale::run(offset_batch));
+            return detail::gather_impl<prescale::scale>(mem, prescale::run(offset_batch), A {});
         }
 
         template <std::size_t scale, class A, class Offset,
