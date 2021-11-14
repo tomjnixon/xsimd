@@ -561,12 +561,21 @@ namespace xsimd
 
         namespace detail
         {
+            // utilities for dealing with the static gather scale parameter
+
+            // given a required scale and a list of possible scales, select the
+            // best one to use: the first possible scale which divides the
+            // required scale exactly
+            //
+            // scales should be passed in descending order, and we assume that
+            // the last scale is always 1 and therefore always appropriate
             template <std::size_t required_scale, std::size_t... scales>
             struct select_scale;
 
             template <std::size_t required_scale, std::size_t head>
             struct select_scale<required_scale, head>
             {
+                static_assert(head == 1, "scale list must end with 1");
                 static constexpr size_t scale = head;
             };
 
@@ -578,6 +587,8 @@ namespace xsimd
                     : select_scale<required_scale, tail...>::scale;
             };
 
+            // object which handles selecting a static scale and applying the
+            // residual scale to a batch if required
             template <std::size_t required_scale, std::size_t... scales>
             struct prescaler
             {
