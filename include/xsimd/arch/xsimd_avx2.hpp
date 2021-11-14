@@ -606,6 +606,41 @@ namespace xsimd
                 }
             };
 
+            // utilities for statically checking masks
+
+            // is a call to T::get(0) constexpr?
+            template <typename T, class Enable = void>
+            struct is_get_constexpr : std::false_type
+            {
+            };
+
+            template <typename T>
+            struct is_get_constexpr<T, typename std::enable_if<(T::get(0), true)>::type> : std::true_type
+            {
+            };
+
+            // is T::get(i) true for i < T::size?
+            template <typename T>
+            constexpr bool check_all_true(size_t size = T::size, size_t i = 0)
+            {
+                return i < size ? (T::get(i) && check_all_true<T>(size, i + 1)) : true;
+            }
+
+            // is a mask of type T always true in all lanes?
+            template <typename T, class Enable = void>
+            struct mask_always_true : std::false_type
+            {
+            };
+
+            template <typename T>
+            struct mask_always_true<T, typename std::enable_if<is_get_constexpr<T>::value>::type>
+                : std::integral_constant<bool, check_all_true<T>()>
+            {
+            };
+
+            // gather implementations for different types
+            // no mask
+
             template <std::size_t scale = 1, class A>
             inline batch<float, A> gather_impl(float const* mem, batch<int32_t, A> offset, requires_arch<avx2>)
             {
@@ -635,11 +670,57 @@ namespace xsimd
             {
                 return _mm256_i64gather_epi64((long long int const*)mem, offset, scale);
             }
+
+            // with mask
+
+            template <std::size_t scale = 1, class A, class M>
+            inline batch<float, A> gather_impl(float const* mem, batch<int32_t, A> offset, batch_bool<M, A> mask, requires_arch<avx2>)
+            {
+                return _mm256_mask_i32gather_ps(_mm256_setzero_ps(), mem, offset, mask, scale);
+            }
+
+            template <std::size_t scale = 1, class A, class M>
+            inline batch<double, A> gather_impl(double const* mem, batch<int64_t, A> offset, batch_bool<M, A> mask, requires_arch<avx2>)
+            {
+                return _mm256_mask_i64gather_pd(_mm256_setzero_pd(), mem, offset, mask, scale);
+            }
+
+            template <std::size_t scale = 1, class A, class T, class M,
+                      typename std::enable_if<std::is_same<T, int32_t>::value || std::is_same<T, uint32_t>::value,
+                                              int>::type
+                      = 0>
+            inline batch<T, A> gather_impl(T const* mem, batch<int32_t, A> offset, batch_bool<M, A> mask, requires_arch<avx2>)
+            {
+                return _mm256_mask_i32gather_epi32(_mm256_setzero_si256(), (int const*)mem, offset, mask, scale);
+            }
+
+            template <std::size_t scale = 1, class A, class T, class M,
+                      typename std::enable_if<std::is_same<T, int64_t>::value || std::is_same<T, uint64_t>::value,
+                                              int>::type
+                      = 0>
+            inline batch<T, A> gather_impl(T const* mem, batch<int64_t, A> offset, batch_bool<M, A> mask, requires_arch<avx2>)
+            {
+                return _mm256_mask_i64gather_epi64(_mm256_setzero_si256(), (long long int const*)mem, offset, mask, scale);
+            }
         };
 
-        template <std::size_t scale, class A, class T, class O,
-                  class offset_batch_t = batch<typename O::value_type, A>>
-        inline auto gather(T const* mem, O const& offset, requires_arch<avx2>)
+        template <std::size_t scale, class A, class T, class O, class M,
+                  class offset_batch_t = batch<typename O::value_type, A>,
+                  class mask_batch_t = batch_bool<typename M::batch_type::value_type, A>,
+                  typename std::enable_if<!detail::mask_always_true<M>::value, int>::type = 0>
+        inline auto gather(T const* mem, O const& offset, M const& mask, requires_arch<avx2>)
+            -> decltype(detail::gather_impl(mem, std::declval<offset_batch_t>(), std::declval<mask_batch_t>(), A {}))
+        {
+            offset_batch_t offset_batch = offset;
+            mask_batch_t mask_batch = mask;
+            using prescale = detail::prescaler<scale, 8, 4, 2, 1>;
+            return detail::gather_impl<prescale::scale>(mem, prescale::run(offset_batch), mask_batch, A {});
+        }
+
+        template <std::size_t scale, class A, class T, class O, class M,
+                  class offset_batch_t = batch<typename O::value_type, A>,
+                  typename std::enable_if<detail::mask_always_true<M>::value, int>::type = 0>
+        inline auto gather(T const* mem, O const& offset, M const&, requires_arch<avx2>)
             -> decltype(detail::gather_impl(mem, std::declval<offset_batch_t>(), A {}))
         {
             offset_batch_t offset_batch = offset;

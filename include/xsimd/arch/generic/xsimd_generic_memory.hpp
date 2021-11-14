@@ -103,31 +103,33 @@ namespace xsimd
         }
 
         // gather
-        template <std::size_t scale, class A, class T, class Offset,
+        template <std::size_t scale, class A, class T, class Offset, class Mask,
                   typename std::enable_if<scale != sizeof(T), bool>::type = true>
-        inline batch<T, A> gather(T const* mem, Offset const& offset, requires_arch<generic>)
+        inline batch<T, A> gather(T const* mem, Offset const& offset, Mask const& mask, requires_arch<generic>)
         {
             using batch_type_out = batch<T, A>;
             using offset_value = decltype(offset.get(0));
             static_assert(batch_type_out::size == Offset::size, "offset must be same size as result");
 
-            alignas(A::alignment()) T buffer[batch_type_out::size];
+            alignas(A::alignment()) T buffer[batch_type_out::size] = {};
             for (std::size_t i = 0; i < batch_type_out::size; i++)
-                buffer[i] = *(T const*)(((uint8_t const*)mem) + ((offset_value)scale) * offset.get(i));
+                if (mask.get(i))
+                    buffer[i] = *(T const*)(((uint8_t const*)mem) + ((offset_value)scale) * offset.get(i));
 
             return batch_type_out::load_aligned(buffer);
         }
 
-        template <std::size_t scale, class A, class T, class Offset,
+        template <std::size_t scale, class A, class T, class Offset, class Mask,
                   typename std::enable_if<scale == sizeof(T), bool>::type = true>
-        inline batch<T, A> gather(T const* mem, Offset const& offset, requires_arch<generic>)
+        inline batch<T, A> gather(T const* mem, Offset const& offset, Mask const& mask, requires_arch<generic>)
         {
             using batch_type_out = batch<T, A>;
             static_assert(batch_type_out::size == Offset::size, "offset must be same size as result");
 
-            alignas(A::alignment()) T buffer[batch_type_out::size];
+            alignas(A::alignment()) T buffer[batch_type_out::size] = {};
             for (std::size_t i = 0; i < batch_type_out::size; i++)
-                buffer[i] = mem[offset.get(i)];
+                if (mask.get(i))
+                    buffer[i] = mem[offset.get(i)];
 
             return batch_type_out::load_aligned(buffer);
         }

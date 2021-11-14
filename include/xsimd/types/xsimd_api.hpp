@@ -1102,17 +1102,22 @@ namespace xsimd
         return load_as<From, A>(ptr, unaligned_mode {});
     }
 
-    template <std::size_t scale, class A = default_arch, class From, class Offset>
-    inline batch<From, A> gather(From const* ptr, Offset const& offset)
+    template <std::size_t scale, class A = default_arch, class From, class Offset,
+              class OffsetBatch = batch<typename Offset::value_type, A>,
+              class Mask = decltype(make_batch_bool_constant_true<OffsetBatch>())>
+    inline batch<From, A> gather(From const* ptr, Offset const& offset, Mask const& mask = {})
     {
         static_assert(batch<From, A>::size == Offset::size, "offset and result must be the same size");
-        return kernel::gather<scale, A>(ptr, offset, A {});
+        static_assert(batch<From, A>::size == Mask::size, "mask and result must be the same size");
+        return kernel::gather<scale, A>(ptr, offset, mask, A {});
     }
 
-    template <class A = default_arch, class From, class Offset>
-    inline batch<From, A> gather(From const* ptr, Offset const& offset)
+    template <class A = default_arch, class From, class Offset,
+              class OffsetBatch = batch<typename Offset::value_type, A>,
+              class Mask = decltype(make_batch_bool_constant_true<OffsetBatch>())>
+    inline batch<From, A> gather(From const* ptr, Offset const& offset, Mask const& mask = {})
     {
-        return gather<sizeof(From), A>(ptr, offset);
+        return gather<sizeof(From), A>(ptr, offset, mask);
     }
 
     /**
