@@ -424,6 +424,18 @@ namespace xsimd
                 return _mm256_mullo_epi16(self, other);
             case 4:
                 return _mm256_mullo_epi32(self, other);
+            case 8:
+            {
+                // from vectorclass, under Apache 2 license
+                // https://github.com/vectorclass/version2/blob/a0a33986fb1fe8a5b7844e8a1b1f197ce19af35d/vectori256.h#L3369
+                __m256i bswap = _mm256_shuffle_epi32(other, 0xB1); // swap H<->L
+                __m256i prodlh = _mm256_mullo_epi32(self, bswap); // 32 bit L*H products
+                __m256i zero = _mm256_setzero_si256(); // 0
+                __m256i prodlh2 = _mm256_hadd_epi32(prodlh, zero); // a0Lb0H+a0Hb0L,a1Lb1H+a1Hb1L,0,0
+                __m256i prodlh3 = _mm256_shuffle_epi32(prodlh2, 0x73); // 0, a0Lb0H+a0Hb0L, 0, a1Lb1H+a1Hb1L
+                __m256i prodll = _mm256_mul_epu32(self, other); // a0Lb0L,a1Lb1L, 64 bit unsigned products
+                return _mm256_add_epi64(prodll, prodlh3); // a0Lb0L+(a0Lb0H+a0Hb0L)<<32, a1Lb1L+(a1Lb1H+a1Hb1L)<<32
+            }
             default:
                 return mul(self, other, avx {});
             }
