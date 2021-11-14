@@ -17,6 +17,22 @@
 
 namespace xsimd
 {
+    namespace detail
+    {
+        // extract the i-th T parameter
+        template <typename T>
+        constexpr T get_at_index(size_t /*i*/, T head)
+        {
+            return head;
+        }
+
+        template <typename T, typename... Ts>
+        constexpr T get_at_index(size_t i, T head, Ts... tail)
+        {
+            return i == 0 ? head : get_at_index(i - 1, tail...);
+        }
+    }
+
     template <class batch_type, bool... Values>
     struct batch_bool_constant
     {
@@ -27,9 +43,9 @@ namespace xsimd
 
         operator batch_bool<typename batch_type::value_type, arch_type>() const { return { Values... }; }
 
-        bool get(size_t i) const
+        static constexpr bool get(size_t i)
         {
-            return std::array<value_type, size> { { Values... } }[i];
+            return detail::get_at_index(i, Values...);
         }
 
         static constexpr int mask()
@@ -56,9 +72,9 @@ namespace xsimd
 
         operator batch_type() const { return { Values... }; }
 
-        constexpr value_type get(size_t i) const
+        static constexpr value_type get(size_t i)
         {
-            return std::array<value_type, size> { Values... }[i];
+            return detail::get_at_index(i, Values...);
         }
     };
 
